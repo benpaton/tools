@@ -8,7 +8,17 @@ $numberOfLoops  = 5;
 //get number of loops to run from the url if it's set
 if (isset($_GET["l"])) {
 	$numberOfLoops = $_GET["l"];
-	set_time_limit($numberOfLoops);
+	
+	$scriptTimeLimit = 30 + $numberOfLoops;
+	set_time_limit($scriptTimeLimit);
+}
+
+//set default number of random IPs to generate
+$numberOfIPsToGenerate = 5;
+
+//get number of random IPs to generate from the url if it's set
+if (isset($_GET["ips"])) {
+	$numberOfIPsToGenerate = $_GET["ips"];
 }
 
 //function to get the header info
@@ -28,81 +38,62 @@ function implode_with_key($assoc, $inglue = ' = ', $outglue = ', ') {
 }
 
 //function to check the http status code of mutiple IP's using multi curl
-function checkHTTPStatusCode($ip1,$ip2,$ip3,$ip4,$ip5) {
+function checkHTTPStatusCode($ips) {
+
+	//count the number of ips to setup multi curl for
+	$numberOfCurlsToDo = count($ips);
+	
+	//setup the user agent string for curl
 	$agent = "Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)";
-	
-	//create cURL resources
-	$ch1 = curl_init();
-	$ch2 = curl_init();
-	$ch3 = curl_init();
-	$ch4 = curl_init();
-	$ch5 = curl_init();
-	
-	//set opptions
-	curl_setopt ($ch1, CURLOPT_URL,$ip1);
-	curl_setopt ($ch1, CURLOPT_USERAGENT, $agent);
-	curl_setopt ($ch1, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt ($ch1, CURLOPT_HEADER, 1);
-	//curl_setopt ($ch1, CURLOPT_VERBOSE, false);
-	//curl_setopt ($ch1, CURLOPT_TIMEOUT, 1);
-	curl_setopt ($ch1, CURLOPT_TIMEOUT_MS, 500);
-	
-	curl_setopt ($ch2, CURLOPT_URL,$ip2);
-	curl_setopt ($ch2, CURLOPT_USERAGENT, $agent);
-	curl_setopt ($ch2, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt ($ch2, CURLOPT_HEADER, 1);
-	curl_setopt ($ch2, CURLOPT_TIMEOUT_MS, 500);
-	
-	curl_setopt ($ch3, CURLOPT_URL,$ip3);
-	curl_setopt ($ch3, CURLOPT_USERAGENT, $agent);
-	curl_setopt ($ch3, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt ($ch3, CURLOPT_HEADER, 1);
-	curl_setopt ($ch3, CURLOPT_TIMEOUT_MS, 500);
-	
-	curl_setopt ($ch4, CURLOPT_URL,$ip4);
-	curl_setopt ($ch4, CURLOPT_USERAGENT, $agent);
-	curl_setopt ($ch4, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt ($ch4, CURLOPT_HEADER, 1);
-	curl_setopt ($ch4, CURLOPT_TIMEOUT_MS, 500);
-	
-	curl_setopt ($ch5, CURLOPT_URL,$ip5);
-	curl_setopt ($ch5, CURLOPT_USERAGENT, $agent);
-	curl_setopt ($ch5, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt ($ch5, CURLOPT_HEADER, 1);
-	curl_setopt ($ch5, CURLOPT_TIMEOUT_MS, 500);
 	
 	//create the multiple cURL handle
 	$mh = curl_multi_init();
 	
-	//add the two handles
-	curl_multi_add_handle($mh,$ch1);
-	curl_multi_add_handle($mh,$ch2);
-	curl_multi_add_handle($mh,$ch3);
-	curl_multi_add_handle($mh,$ch4);
-	curl_multi_add_handle($mh,$ch5);
+	//loop over the ips and setup multi curl
+	$curlLoop = 0;
+	while ($curlLoop < $numberOfCurlsToDo) {
+		
+		//create curl resources
+		$ch[$curlLoop] = curl_init();
+		
+		//set curl opptions
+		curl_setopt ($ch[$curlLoop], CURLOPT_URL,$ips[$curlLoop]);
+		curl_setopt ($ch[$curlLoop], CURLOPT_USERAGENT, $agent);
+		curl_setopt ($ch[$curlLoop], CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt ($ch[$curlLoop], CURLOPT_HEADER, 1);
+		curl_setopt ($ch[$curlLoop], CURLOPT_TIMEOUT_MS, 500);
+		
+		//add the two handles
+		curl_multi_add_handle($mh,$ch[$curlLoop]);
+	
+		$curlLoop++;
+	}
 	
 	//execute the handles
 	$running = null;
 	do {
 		curl_multi_exec($mh, $running);
 	} while($running > 0);
-  
+	
+	
 	//get http status codes
-	$httpcode1 = curl_getinfo($ch1, CURLINFO_HTTP_CODE);
-	$httpcode2 = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
-	$httpcode3 = curl_getinfo($ch3, CURLINFO_HTTP_CODE);
-	$httpcode4 = curl_getinfo($ch4, CURLINFO_HTTP_CODE);
-	$httpcode5 = curl_getinfo($ch5, CURLINFO_HTTP_CODE);
+	$curlHTTPStatusLoop = 0;
+	while ($curlHTTPStatusLoop < $numberOfCurlsToDo) {
+		$httpcodes[] = curl_getinfo($ch[$curlHTTPStatusLoop], CURLINFO_HTTP_CODE);
+		
+		$curlHTTPStatusLoop++;
+	}
 		
 	//close the handles
-	curl_multi_remove_handle($mh, $ch1);
-	curl_multi_remove_handle($mh, $ch2);
-	curl_multi_remove_handle($mh, $ch3);
-	curl_multi_remove_handle($mh, $ch4);
-	curl_multi_remove_handle($mh, $ch5);
+	$curlCloseHandlesLoop = 0;
+	while ($curlCloseHandlesLoop < $numberOfCurlsToDo) {
+		curl_multi_remove_handle($mh, $ch[$curlCloseHandlesLoop]);
+		
+		$curlCloseHandlesLoop++;
+	}
 	curl_multi_close($mh);	
 
-	return array($httpcode1,$httpcode2,$httpcode3,$httpcode4,$httpcode5);
+	return $httpcodes;
 }
 
 function generateIP() {
@@ -147,26 +138,35 @@ while ($i < $numberOfLoops ) {
 	//start microtime to reccord who long it's taking
 	$startTime = microtime(true);
 
-	//generate array of random IP's
-	$ip = array(generateIP(),generateIP(),generateIP(),generateIP(),generateIP());
-	
+	//generate array of random IP's for the number of IPs specified
+	$numberOfIPsGenerated = 0;
+	while ($numberOfIPsGenerated < $numberOfIPsToGenerate) {
+		
+		$ips[] = generateIP();
+		
+		$numberOfIPsGenerated++;
+	}
+		
 	//get the status codes from curl
-	$statusCode = checkHTTPStatusCode($ip[0],$ip[1],$ip[2],$ip[3],$ip[4]);
+	$statusCode = checkHTTPStatusCode($ips);
 	
+	//print_r($ips);
+	//print_r($statusCode);
+		
 	echo '<ol>';
 	
 	//echo out the links
 	$i2 = 0;
-	while ($i2 < 5) {
+	while ($i2 < $numberOfIPsToGenerate) {
 		if ($statusCode[$i2] != '0') {
 			
 			//get header info the live IP's
-			$headerInfo = implode_with_key(headerInfo($ip[$i2]));
+			$headerInfo = implode_with_key(headerInfo($ips[$i2]));
 			$headerInfo = str_replace('0 =', '', $headerInfo);
 						
-			echo '<li class="green"><a href="http://'.$ip[$i2].'" target="_blank">'.$ip[$i2 ].'</a> '.$headerInfo.'</li>';
+			echo '<li class="green"><a href="http://'.$ips[$i2].'" target="_blank">'.$ips[$i2 ].'</a> '.$headerInfo.'</li>';
 		} else {
-			echo '<li>'.$ip[$i2].'</li>';
+			echo '<li>'.$ips[$i2].'</li>';
 		}
 		$i2++;
 	}
