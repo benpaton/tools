@@ -23,3 +23,7 @@ By default it generates 5 blocks of IP addresses out. If you want to specify mor
 This file is an implementation of a really simple 1 pixel tracking gif. When called it increases a count in a database by 1 and returns a 1 pixel gif tracking pixel. It can be used as a simple counter to find out how many times a page or e-mail has been accessed. It has two options, reset and display which can be specified by url parameters do=reset or do=display. These parameters reset the database count or display the number of times the tracking pixel has been called. 
 
 For this script to work you need to create a MySQL database called tracking with a table called count1 which has one integer field called count. Connection to this database then needs to be made in the databaseConnection.php file which is included on line 6. I've not included this file in github for obvious reasons.
+
+## btInfintyCheck.php
+
+This script uses the BT openreach where and when website (http://www.superfast-openreach.co.uk/where-and-when/) ajax call response to determine if you are in a BT Infinity superfast broadband enabled area and then sends an e-mail an alert with the response. It is designed to be run as cron job so that you don't have to check the BTopenreach website every day.
