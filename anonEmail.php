@@ -56,7 +56,7 @@ textarea {
         <li><input type="text" name="to" placeholder="to" /></li>
         <li><input type="text" name="from" placeholder="from" /></li>
         <li><input type="text" name="subject" placeholder="subject" /></li>
-        <li><textarea name="message" placehodler="message"></textarea></li>
+        <li><textarea name="message" placeholder="message"></textarea></li>
         <li><input type="hidden" name="send" id="send" value="send" /><input type="submit" name="submit" value="submit" /></li>
     </ul>
 </form>
